@@ -12,9 +12,11 @@ from cupyx.scipy.sparse import _sputils
 
 try:
     import scipy.sparse as _sparse
+
     SparseWarning = _sparse.SparseWarning
     SparseEfficiencyWarning = _sparse.SparseEfficiencyWarning
 except ImportError:
+
     class SparseWarning(Warning):  # type: ignore
         pass
 
@@ -26,7 +28,6 @@ except ImportError:
 
 
 class spmatrix:
-
     """Base class of all sparse matrixes.
 
     See :class:`scipy.sparse.spmatrix`
@@ -36,8 +37,7 @@ class spmatrix:
 
     def __init__(self, maxprint=50):
         if self.__class__ == spmatrix:
-            raise ValueError(
-                'This class is not intended to be instantiated directly.')
+            raise ValueError("This class is not intended to be instantiated directly.")
         self.maxprint = maxprint
 
     @property
@@ -59,8 +59,15 @@ class spmatrix:
         raise NotImplementedError
 
     def __len__(self):
-        raise TypeError('sparse matrix length is ambiguous; '
-                        'use getnnz() or shape[0]')
+        raise TypeError(
+            "sparse matrix length is ambiguous; " "use getnnz() or shape[0]"
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"<{self.getformat()} sparse matrix of dtype '{self.dtype}'\n"
+            f"\twith {self.nnz} stored elements and shape {self.shape}>"
+        )
 
     def __str__(self):
         # TODO(unno): Do not use get method which is only available when scipy
@@ -75,8 +82,10 @@ class spmatrix:
         if self.shape == (1, 1):
             return self.nnz != 0
         else:
-            raise ValueError('The truth value of an array with more than one '
-                             'element is ambiguous. Use a.any() or a.all().')
+            raise ValueError(
+                "The truth value of an array with more than one "
+                "element is ambiguous. Use a.any() or a.all()."
+            )
 
     __nonzero__ = __bool__
 
@@ -129,14 +138,12 @@ class spmatrix:
     # matmul (@) operator
     def __matmul__(self, other):
         if _util.isscalarlike(other):
-            raise ValueError('Scalar operands are not allowed, '
-                             'use \'*\' instead')
+            raise ValueError("Scalar operands are not allowed, " "use '*' instead")
         return self.__mul__(other)
 
     def __rmatmul__(self, other):
         if _util.isscalarlike(other):
-            raise ValueError('Scalar operands are not allowed, '
-                             'use \'*\' instead')
+            raise ValueError("Scalar operands are not allowed, " "use '*' instead")
         return self.__rmul__(other)
 
     def __div__(self, other):
@@ -185,19 +192,19 @@ class spmatrix:
         """
         m, n = self.shape
         if m != n:
-            raise TypeError('matrix is not square')
+            raise TypeError("matrix is not square")
         if not isinstance(other, numbers.Integral):
             raise ValueError("exponent must be an integer")
 
         if _util.isintlike(other):
             other = int(other)
             if other < 0:
-                raise ValueError('exponent must be >= 0')
+                raise ValueError("exponent must be >= 0")
 
             if other == 0:
                 import cupyx.scipy.sparse
-                return cupyx.scipy.sparse.identity(
-                    m, dtype=self.dtype, format='csr')
+
+                return cupyx.scipy.sparse.identity(m, dtype=self.dtype, format="csr")
             elif other == 1:
                 return self.copy()
             else:
@@ -207,7 +214,7 @@ class spmatrix:
                 else:
                     return tmp * tmp
         elif _util.isscalarlike(other):
-            raise ValueError('exponent must be an integer')
+            raise ValueError("exponent must be an integer")
         else:
             return NotImplemented
 
@@ -258,7 +265,7 @@ class spmatrix:
         if format is None or format == self.format:
             return self
         else:
-            return getattr(self, 'to' + format)()
+            return getattr(self, "to" + format)()
 
     def asfptype(self):
         """Upcasts matrix to a floating point format.
@@ -270,10 +277,10 @@ class spmatrix:
             cupyx.scipy.sparse.spmatrix: A matrix with float type.
 
         """
-        if self.dtype.kind == 'f':
+        if self.dtype.kind == "f":
             return self
         else:
-            typ = numpy.promote_types(self.dtype, 'f')
+            typ = numpy.promote_types(self.dtype, "f")
             return self.astype(typ)
 
     def astype(self, t):
@@ -303,7 +310,7 @@ class spmatrix:
             cupyx.scipy.sparse.spmatrix : The element-wise complex conjugate.
 
         """
-        if self.dtype.kind == 'c':
+        if self.dtype.kind == "c":
             return self.tocsr(copy=copy).conj(copy=False)
         elif copy:
             return self.copy()
@@ -399,9 +406,11 @@ class spmatrix:
             :meth:`scipy.sparse.spmatrix.mean`
 
         """
+
         def _is_integral(dtype):
-            return (cupy.issubdtype(dtype, cupy.integer) or
-                    cupy.issubdtype(dtype, cupy.bool_))
+            return cupy.issubdtype(dtype, cupy.integer) or cupy.issubdtype(
+                dtype, cupy.bool_
+            )
 
         _sputils.validateaxis(axis)
 
@@ -420,9 +429,9 @@ class spmatrix:
         inter_self = self.astype(inter_dtype)
 
         if axis is None:
-            return (inter_self / cupy.array(
-                self.shape[0] * self.shape[1]))\
-                .sum(dtype=res_dtype, out=out)
+            return (inter_self / cupy.array(self.shape[0] * self.shape[1])).sum(
+                dtype=res_dtype, out=out
+            )
 
         if axis < 0:
             axis += 2
@@ -430,10 +439,12 @@ class spmatrix:
         # axis = 0 or 1 now
         if axis == 0:
             return (inter_self * (1.0 / self.shape[0])).sum(
-                axis=0, dtype=res_dtype, out=out)
+                axis=0, dtype=res_dtype, out=out
+            )
         else:
             return (inter_self * (1.0 / self.shape[1])).sum(
-                axis=1, dtype=res_dtype, out=out)
+                axis=1, dtype=res_dtype, out=out
+            )
 
     def minimum(self, other):
         return self.tocsr().minimum(other)
@@ -447,7 +458,7 @@ class spmatrix:
     def power(self, n, dtype=None):
         return self.tocsr().power(n, dtype=dtype)
 
-    def reshape(self, *shape, order='C'):
+    def reshape(self, *shape, order="C"):
         """Gives a new shape to a sparse matrix without changing its data.
 
         Args:
@@ -517,8 +528,7 @@ class spmatrix:
         _sputils.validateaxis(axis)
 
         if axis is None:
-            return self.dot(cupy.ones(n, dtype=self.dtype)).sum(
-                dtype=dtype, out=out)
+            return self.dot(cupy.ones(n, dtype=self.dtype)).sum(dtype=dtype, out=out)
 
         if axis < 0:
             axis += 2
@@ -530,7 +540,7 @@ class spmatrix:
 
         if out is not None:
             if out.shape != ret.shape:
-                raise ValueError('dimensions do not match')
+                raise ValueError("dimensions do not match")
             _core.elementwise_copy(ret, out)
             return out
         elif dtype is not None:
